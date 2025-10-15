@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "portalbuttons",
+  "version": "${version}",
+
+  "name": "Portal Buttons",
+  "description": "Press a button on a portal frame to teleport through it, with no delay",
+  "authors": [
+    "jacob1"
+  ],
+  "contact": {},
+
+  "license": "MIT",
+  "icon": "assets/portalbuttons/icon.png",
+
+  "environment": "server",
+  "entrypoints": {
+    "main": ["us.starcatcher.portalbuttons.Portalbuttons"]
+  },
+
+  "mixins": [
+    "portalbuttons.mixins.json"
+  ],
+
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric": "*",
+    "minecraft": "${minecraft_version}"
+  }
+}
