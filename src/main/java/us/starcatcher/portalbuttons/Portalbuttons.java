@@ -1,9 +1,11 @@
 package us.starcatcher.portalbuttons;
 
 import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.event.Event;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EntityType;
@@ -30,12 +32,17 @@ import java.util.Set;
  */
 public class Portalbuttons implements ModInitializer {
 
+	public static final ResourceLocation FLAN_EVENT_PHASE = ResourceLocation.fromNamespaceAndPath("flan", "events");
+	public static final ResourceLocation BUTTON_EVENT_PHASE = ResourceLocation.fromNamespaceAndPath("starcatcher", "events");
+
 	/**
 	 * Initialize plugin
 	 */
 	@Override
 	public void onInitialize() {
-		UseBlockCallback.EVENT.register((player, level, hand, hitResult) -> {
+		UseBlockCallback.EVENT.addPhaseOrdering(BUTTON_EVENT_PHASE, FLAN_EVENT_PHASE);
+		UseBlockCallback.EVENT.addPhaseOrdering(BUTTON_EVENT_PHASE, Event.DEFAULT_PHASE);
+		UseBlockCallback.EVENT.register(BUTTON_EVENT_PHASE, (player, level, hand, hitResult) -> {
 			if (level instanceof ServerLevel serverLevel) {
 				if (processAttackBlock(player, serverLevel, hitResult.getBlockPos()))
 					return InteractionResult.CONSUME;
