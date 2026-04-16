@@ -5,12 +5,15 @@ import net.fabricmc.fabric.api.event.Event;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.Ticket;
+import net.minecraft.server.level.TicketType;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.ButtonBlock;
 import net.minecraft.world.level.block.FaceAttachedHorizontalDirectionalBlock;
@@ -19,6 +22,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.Shapes;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import us.starcatcher.portalbuttons.util.BlockScanner;
 
 import java.util.ArrayList;
@@ -32,8 +37,10 @@ import java.util.Set;
  */
 public class Portalbuttons implements ModInitializer {
 
-	public static final ResourceLocation FLAN_EVENT_PHASE = ResourceLocation.fromNamespaceAndPath("flan", "events");
-	public static final ResourceLocation BUTTON_EVENT_PHASE = ResourceLocation.fromNamespaceAndPath("starcatcher", "events");
+	public static final Identifier FLAN_EVENT_PHASE = Identifier.fromNamespaceAndPath("flan", "events");
+	public static final Identifier BUTTON_EVENT_PHASE = Identifier.fromNamespaceAndPath("starcatcher", "events");
+
+	public static final Logger LOGGER = LoggerFactory.getLogger("portalbuttons");
 
 	/**
 	 * Initialize plugin
@@ -50,7 +57,7 @@ public class Portalbuttons implements ModInitializer {
 
 			return InteractionResult.PASS;
 		});
-		System.out.println("Portalbuttons Initialized");
+		LOGGER.info("[portalbuttons] Portalbuttons Initialized");
 	}
 
 	/**
@@ -122,6 +129,12 @@ public class Portalbuttons implements ModInitializer {
 		var playerDimensions = player.getDimensions(Pose.STANDING);
 		var shapes = getScannableShapes(level, destinationBlockPos, axis);
 		for (var shape : shapes) {
+
+			// Sometimes, teleportation fails because chunk collision isn't loaded on the other side
+			// I have no idea how to fix this. Instead, add a ticket to keep the chunks loaded for a few seconds for the 2nd press
+			var chunkPos = roundToBlockPos(shape.shape().bounds().getBottomCenter());
+			level.getChunkSource().addTicket(new Ticket(TicketType.PORTAL, 31), ChunkPos.containing(chunkPos));
+
 			var freePositionOpt = level.findFreePosition(
 				player, shape.shape(), shape.shape().bounds().getBottomCenter(), playerDimensions.width(), playerDimensions.height(), playerDimensions.width()
 			);
@@ -132,12 +145,16 @@ public class Portalbuttons implements ModInitializer {
 
 			var freePosition = freePositionOpt.get();
 			// Free position is at shape floor. That means there's no floor on the other side, unknown how long the fall is
-			if (freePosition.y == shape.shape().min(Direction.Axis.Y))
+			if (freePosition.y == shape.shape().min(Direction.Axis.Y)) {
+				LOGGER.info("[portalbuttons] Couldn't teleport because of unknown floor height at {}. This means there's a hole on the other end, or the portal is by a chunk border and collisions haven't loaded", freePosition);
 				continue;
+			}
 
 			// Dangerous block at position (like, lava)
-			if (EntityType.PLAYER.isBlockDangerous(level.getBlockState(roundToBlockPos(freePosition))))
+			if (EntityType.PLAYER.isBlockDangerous(level.getBlockState(roundToBlockPos(freePosition)))) {
+				LOGGER.info("[portalbuttons] Couldn't teleport because of dangerous block at {}", freePosition);
 				continue;
+			}
 
 			// Do teleport. For some reason we need to adjust for player hitbox here
 			player.teleportTo(level, freePosition.x, freePosition.y - playerDimensions.height() / 2, freePosition.z, Set.of(), Direction.getYRot(shape.direction()), 0, true);
