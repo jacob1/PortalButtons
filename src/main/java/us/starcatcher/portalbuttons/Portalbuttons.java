@@ -73,6 +73,7 @@ public class Portalbuttons implements ModInitializer {
 		// Must press button
 		if (!(state.getBlock() instanceof ButtonBlock))
 			return false;
+		boolean isStoneButton = state.is(Blocks.STONE_BUTTON);
 
 		var obsidianPos = pos.relative(getDirection(state), -1);
 		// Button must be on obsidian
@@ -86,7 +87,7 @@ public class Portalbuttons implements ModInitializer {
 
 		// It's a portal block, process the possible teleport
 		if (level.getBlockState(portalBlockPositions.getFirst()).getBlock() instanceof NetherPortalBlock portalBlock) {
-			return processPortalClick(level, portalBlock, portalBlockPositions.getFirst(), player);
+			return processPortalClick(level, portalBlock, portalBlockPositions.getFirst(), player, !isStoneButton);
 		}
 
 		return false;
@@ -99,9 +100,11 @@ public class Portalbuttons implements ModInitializer {
 	 * @param portalBlock    The portal block
 	 * @param portalBlockPos The portal block's position
 	 * @param player         The player that clicked it
+	 * @param reverseScanDir True if we should scan the opposite portal side first
 	 * @return True on successful teleport
 	 */
-	private boolean processPortalClick(ServerLevel level, NetherPortalBlock portalBlock, BlockPos portalBlockPos, Player player) {
+	private boolean processPortalClick(ServerLevel level, NetherPortalBlock portalBlock, BlockPos portalBlockPos, Player player,
+			boolean reverseScanDir) {
 		var destination = portalBlock.getPortalDestination(level, player, portalBlockPos);
 		if (destination == null)
 			return false;
@@ -109,7 +112,7 @@ public class Portalbuttons implements ModInitializer {
 		var destinationBlockPos = roundToBlockPos(destination.position());
 		var destinationBlockState = destination.newLevel().getBlockState(destinationBlockPos);
 		if (destinationBlockState.getBlock() instanceof NetherPortalBlock) {
-			if (findTeleport(destination.newLevel(), destinationBlockPos, player, destinationBlockState.getValue(NetherPortalBlock.AXIS)))
+			if (findTeleport(destination.newLevel(), destinationBlockPos, player, destinationBlockState.getValue(NetherPortalBlock.AXIS), reverseScanDir))
 				return true;
 		}
 
@@ -123,11 +126,15 @@ public class Portalbuttons implements ModInitializer {
 	 * @param destinationBlockPos Block position of the destination portal (any part of the portal will do)
 	 * @param player              The player to teleport
 	 * @param axis                The axis the portal is on (either X or Z)
+	 * @param reverseScanDir      True if we should scan the opposite portal side first
 	 * @return True on successful teleport
 	 */
-	private boolean findTeleport(ServerLevel level, BlockPos destinationBlockPos, Player player, Direction.Axis axis) {
+	private boolean findTeleport(ServerLevel level, BlockPos destinationBlockPos, Player player, Direction.Axis axis,
+			boolean reverseScanDir) {
 		var playerDimensions = player.getDimensions(Pose.STANDING);
 		var shapes = getScannableShapes(level, destinationBlockPos, axis);
+		if (reverseScanDir)
+			shapes = shapes.reversed();
 		for (var shape : shapes) {
 
 			// Sometimes, teleportation fails because chunk collision isn't loaded on the other side
