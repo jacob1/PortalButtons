@@ -11,6 +11,7 @@ import net.minecraft.server.level.Ticket;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
@@ -158,7 +159,7 @@ public class Portalbuttons implements ModInitializer {
 			}
 
 			// Dangerous block at position (like, lava)
-			if (EntityType.PLAYER.isBlockDangerous(level.getBlockState(roundToBlockPos(freePosition)))) {
+			if (EntityTypes.PLAYER.isBlockDangerous(level.getBlockState(roundToBlockPos(freePosition)))) {
 				LOGGER.info("[portalbuttons] Couldn't teleport because of dangerous block at {}", freePosition);
 				continue;
 			}
@@ -192,13 +193,13 @@ public class Portalbuttons implements ModInitializer {
 
 		List<PortalScanArea> shapes = new ArrayList<>();
 		shapes.add(new PortalScanArea(Shapes.create(
-			new AABB(bottomLeft.relative(direction, 1).getBottomCenter(),
-				upperRight.relative(direction, 1).getBottomCenter()).inflate(1.0E-6)
+			new AABB(Vec3.atBottomCenterOf(bottomLeft.relative(direction, 1)),
+					Vec3.atBottomCenterOf(upperRight.relative(direction, 1))).inflate(1.0E-6)
 		), direction));
 
 		shapes.add(new PortalScanArea(Shapes.create(
-			new AABB(bottomLeft.relative(direction, -1).getBottomCenter(),
-				upperRight.relative(direction, -1).getBottomCenter()).inflate(1.0E-6)
+			new AABB(Vec3.atBottomCenterOf(bottomLeft.relative(direction, -1)),
+					Vec3.atBottomCenterOf(upperRight.relative(direction, -1))).inflate(1.0E-6)
 		), direction.getOpposite()));
 
 		return shapes;
